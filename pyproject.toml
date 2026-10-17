@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "portcullis"
+version = "0.1.0"
+description = "Expose whitelisted CLI commands (run on the host with its secrets and permissions) to a container over authenticated HTTP."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "requests>=2.31",
+]
+
+[project.scripts]
+portcullis-server = "portcullis.server:main"
+portcullis = "portcullis.client:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/portcullis"]
