@@ -220,7 +220,46 @@ class TestMain:
     def test_root_help_without_session(self, capsys, monkeypatch):
         monkeypatch.setattr(client, "DEFAULT_SESSION_FILE", "/nonexistent")
         assert client.main(["-h"]) == 0
-        assert "Usage" in capsys.readouterr().out
+        captured = capsys.readouterr()
+        assert "Usage" in captured.out
+        assert "Command groups:" in captured.out
+        assert "server unreachable" in captured.err
+
+    def test_root_help_with_session_lists_enabled_groups(
+        self, session_file, requests_mock, capsys
+    ):
+        requests_mock.get(
+            "http://127.0.0.1:8931/",
+            json={
+                "groups": [
+                    {"path": "/podman", "description": "d1"},
+                    {"path": "/testing", "description": "d2"},
+                ]
+            },
+        )
+        rc = client.main(["--session-file", str(session_file), "-h"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Command groups:" in captured.out
+        assert "  podman               d1" in captured.out
+        assert "  testing              d2" in captured.out
+        assert "server unreachable" not in captured.err
+
+    def test_root_help_server_down_falls_back(
+        self, session_file, requests_mock, capsys
+    ):
+        import requests as requests_mod
+
+        requests_mock.get(
+            "http://127.0.0.1:8931/",
+            exc=requests_mod.exceptions.ConnectionError("boom"),
+        )
+        rc = client.main(["--session-file", str(session_file), "-h"])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Command groups:" in captured.out
+        assert "server unreachable" in captured.err
+        assert "podman" in captured.out
 
     def test_group_help_without_session_degrades(self, capsys, monkeypatch):
         monkeypatch.setattr(client, "DEFAULT_SESSION_FILE", "/nonexistent")

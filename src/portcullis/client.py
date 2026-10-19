@@ -7,6 +7,8 @@ from pathlib import Path
 
 import requests
 
+from .commands import REGISTRY
+
 DEFAULT_SESSION_FILE = Path.home() / ".portcullis-client.toml"
 
 
@@ -72,8 +74,17 @@ def fetch_docs(session, parts):
     return resp.json()
 
 
-def print_usage():
-    """Print local usage help (no server connection needed)."""
+def list_local_groups():
+    """Return (name, description) for every group in the local registry.
+
+    Builds groups with a null client root: factories only use it inside
+    param types, never at construction time, so this does no I/O.
+    """
+    return [(name, factory(None).description) for name, factory in REGISTRY.items()]
+
+
+def print_usage(groups=None):
+    """Print local usage help, optionally listing command groups."""
     print(
         "Usage: portcullis [--session-file PATH] [-h] [<group> [<command>]] [--<param> <value> ...]"
     )
@@ -83,6 +94,11 @@ def print_usage():
         "  --session-file PATH  session file (default: $HOME/.portcullis-client.toml)"
     )
     print("  -h, --help           show help (root, group or command level)")
+    if groups is not None:
+        print()
+        print("Command groups:")
+        for name, description in groups:
+            print(f"  {name:<20} {description}")
     print()
     print("Run 'portcullis <group> -h' or 'portcullis <group> <command> -h'")
     print("for details; these need the server (see --session-file).")
@@ -226,7 +242,23 @@ def main(argv=None):
         if help_mode:
             # Help must work without the session file or a running server.
             if not parts:
-                print_usage()
+                groups = None
+                try:
+                    session = load_session(session_file)
+                    doc = fetch_docs(session, [])
+                    groups = [
+                        (g["path"].lstrip("/"), g["description"])
+                        for g in doc.get("groups", [])
+                    ]
+                except (ClientError, requests.ConnectionError):
+                    # Server unreachable: fall back to the local registry so
+                    # root help still shows groups; enabled set may differ.
+                    print(
+                        "portcullis: server unreachable; listing all known groups",
+                        file=sys.stderr,
+                    )
+                    groups = list_local_groups()
+                print_usage(groups)
                 return 0
             try:
                 session = load_session(session_file)
