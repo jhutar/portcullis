@@ -7,7 +7,7 @@ from pathlib import Path
 
 import requests
 
-DEFAULT_SESSION_FILE = Path.cwd() / ".portcullis-client.toml"
+DEFAULT_SESSION_FILE = Path.home() / ".portcullis-client.toml"
 
 
 class ClientError(Exception):
