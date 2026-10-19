@@ -203,17 +203,24 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     try:
         session_file, help_mode, parts, param_tokens = parse_args(argv)
-        if help_mode and not parts:
-            # Root help must work without the session file or a running server.
-            print_usage()
-            return 0
-        session = load_session(session_file)
         if help_mode:
+            # Help must work without the session file or a running server.
+            if not parts:
+                print_usage()
+                return 0
+            try:
+                session = load_session(session_file)
+            except ClientError as exc:
+                # Can't fetch group/command docs without a session; degrade
+                # gracefully instead of erroring out.
+                print(f"portcullis: {exc}; showing local usage", file=sys.stderr)
+                print_usage()
+                return 0
             print_help(fetch_docs(session, parts), parts)
             return 0
         if not parts:
             raise ClientError("no command given; try: portcullis -h")
-        run_command(session, parts, param_tokens)
+        run_command(load_session(session_file), parts, param_tokens)
     except ClientError as exc:
         print(f"portcullis: {exc}", file=sys.stderr)
         return 2
