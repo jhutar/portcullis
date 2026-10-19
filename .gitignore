@@ -5,3 +5,5 @@ __pycache__/
 .portcullis.toml
 .portcullis-client.toml
 *.swp
+.coverage
+.pytest_cache/

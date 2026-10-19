@@ -19,3 +19,26 @@ portcullis = "portcullis.client:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/portcullis"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "requests-mock>=1.12",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "integration: end-to-end tests over a real HTTP socket",
+]
+
+[tool.coverage.run]
+source = ["src/portcullis"]
+
+[tool.coverage.report]
+fail_under = 90
+exclude_lines = [
+    "if __name__ == .__main__.:",
+]
