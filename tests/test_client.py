@@ -167,6 +167,16 @@ class TestParseArgs:
         assert parts == ["podman"]
         assert rest == ["--image", "f", "run"]
 
+    def test_invalid_path_name_rejected(self):
+        """Group/command names must match [a-z0-9_]+ only."""
+        for bad in ("podman/build", "Podman", "podman-build", ""):
+            with pytest.raises(ClientError, match="does not exist"):
+                parse_args([bad, "-h"])
+
+    def test_valid_path_name_accepted(self):
+        _, _, parts, _ = parse_args(["podman", "build_img2", "-h"])
+        assert parts == ["podman", "build_img2"]
+
 
 class TestPrintHelp:
     def test_root(self, capsys):

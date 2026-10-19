@@ -1,6 +1,7 @@
 """CLI client: talks to the portcullis server, converts flags to typed JSON."""
 
 import json
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -174,6 +175,8 @@ def parse_args(argv):
     (--session-file, -h/--help); everything after ``--`` belongs to the
     container command and is passed through untouched.
 
+    Group and command names must match [a-z0-9_]+.
+
     Returns (session_file, help_mode, path_parts, param_tokens).
     """
     argv = list(argv)
@@ -192,6 +195,11 @@ def parse_args(argv):
     for tok in head:
         if tok.startswith("--"):
             break
+        if not re.fullmatch(r"[a-z0-9_]+", tok):
+            raise ClientError(
+                f"command group or command {tok!r} does not exist"
+                " (names may only contain lowercase letters, digits and '_')"
+            )
         path_parts.append(tok)
     rest = head[len(path_parts) :] + tail
     return session_file, help_mode, path_parts, rest
