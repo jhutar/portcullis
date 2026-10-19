@@ -53,6 +53,19 @@ port. Then you can use the CLI:
     portcullis podman -h                # list commands in a group
     portcullis podman build -h          # command docs (params, types)
     portcullis podman build --file Containerfile
+    portcullis podman run --image quay.io/fedora/fedora:41 \
+        --volume ./src:/src:z,ro --volume ./data:/data:z \
+        --env FOO=bar --env BAZ=qux -- ls -la /src
 
 Client exit code equals the command's exit code. Flags are converted to
 typed JSON using the types from the server's GET docs (strict, no coercion).
+
+List-typed params (e.g. `--volume`, `--env`) are given by repeating the
+flag once per value. Trailing words after `--` become the `command`
+parameter (a list); client flags like `-h` are not recognized after `--`,
+so the container command may use its own `-h`/`--help`.
+
+`podman run` always adds `--rm` (container is removed after it exits) and
+`-it` (output goes to stdout/stderr; the session is not interactive).
+Volume sources must be existing files or directories inside the project
+directory; the destination and mount options are passed through as given.

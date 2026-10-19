@@ -14,8 +14,9 @@ class Param:
 
     def describe(self):
         """Return the JSON-serializable description for GET docs."""
-        doc = {"type": self.ptype.name, "required": self.required,
-               "description": self.description}
+        doc = dict(self.ptype.describe())
+        doc["required"] = self.required
+        doc["description"] = self.description
         return doc
 
 

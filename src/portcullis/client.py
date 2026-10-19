@@ -38,9 +38,15 @@ def api_headers(session):
 
 
 def convert_value(name, spec, raw):
-    """Convert one CLI string to a JSON value using the type from GET docs."""
+    """Convert one CLI string to a JSON value using the type from GET docs.
+
+    List values are converted element-wise using the item type.
+    """
     ptype = spec.get("type", "string")
-    if ptype in ("string", "local_readable_file"):
+    if ptype == "list":
+        item_spec = {"type": spec.get("item", "string")}
+        return [convert_value(name, item_spec, item) for item in raw]
+    if ptype in ("string", "local_readable_file", "local_path"):
         return raw
     if ptype == "integer":
         try:
@@ -64,6 +70,18 @@ def fetch_docs(session, parts):
     return resp.json()
 
 
+def print_usage():
+    """Print local usage help (no server connection needed)."""
+    print("Usage: portcullis [--session-file PATH] [-h] [<group> [<command>]] [--<param> <value> ...]")
+    print()
+    print("Options:")
+    print("  --session-file PATH  session file (default: $HOME/.portcullis-client.toml)")
+    print("  -h, --help           show help (root, group or command level)")
+    print()
+    print("Run 'portcullis <group> -h' or 'portcullis <group> <command> -h'")
+    print("for details; these need the server (see --session-file).")
+
+
 def print_help(doc, parts):
     """Pretty-print docs JSON for root, group or command level."""
     if not parts:
@@ -82,54 +100,82 @@ def print_help(doc, parts):
     print(f"Usage: portcullis {name} [--<param> <value> ...]")
     for pname, spec in doc.get("params", {}).items():
         req = "required" if spec.get("required") else "optional"
-        print(f"  --{pname} <{spec.get('type')}> ({req})  {spec.get('description', '')}")
+        ptype = spec.get("type")
+        if ptype == "list":
+            ptype = f"list<{spec.get('item', 'string')}>"
+        print(f"  --{pname} <{ptype}> ({req})  {spec.get('description', '')}")
 
 
-def parse_params(tokens):
-    """Parse --name value pairs from leftover CLI tokens into a dict."""
+def parse_params(tokens, spec):
+    """Parse --name value pairs and trailing -- words into a param dict.
+
+    Flags for list-typed params may be repeated; occurrences are
+    collected into a list in given order. Everything after a bare ``--``
+    becomes the list value of the ``command`` parameter.
+    """
     params = {}
     i = 0
     while i < len(tokens):
         tok = tokens[i]
+        if tok == "--":
+            if "command" not in spec:
+                raise ClientError("trailing arguments after -- given, but this"
+                                  " command has no 'command' parameter")
+            params["command"] = tokens[i + 1:]
+            break
         if not tok.startswith("--"):
             raise ClientError(f"unexpected argument: {tok!r} (params must be --name value)")
         if i + 1 >= len(tokens):
             raise ClientError(f"missing value for {tok!r}")
-        params[tok[2:]] = tokens[i + 1]
+        name = tok[2:]
+        value = tokens[i + 1]
+        if name not in spec:
+            raise ClientError(f"unknown parameter(s): --{name}")
+        if spec[name].get("type") == "list":
+            params.setdefault(name, []).append(value)
+        elif name in params:
+            raise ClientError(f"--{name} given more than once")
+        else:
+            params[name] = value
         i += 2
     return params
 
 
 def parse_args(argv):
-    """Manually parse argv: --session-file, -h/--help anywhere, path, params.
+    """Manually parse argv: --session-file, -h/--help, path, params.
+
+    Only tokens before a bare ``--`` are inspected for client flags
+    (--session-file, -h/--help); everything after ``--`` belongs to the
+    container command and is passed through untouched.
 
     Returns (session_file, help_mode, path_parts, param_tokens).
     """
     argv = list(argv)
+    sep = argv.index("--") if "--" in argv else len(argv)
+    head, tail = argv[:sep], argv[sep:]
     session_file = DEFAULT_SESSION_FILE
-    if "--session-file" in argv:
-        idx = argv.index("--session-file")
-        if idx + 1 >= len(argv):
+    if "--session-file" in head:
+        idx = head.index("--session-file")
+        if idx + 1 >= len(head):
             raise ClientError("--session-file requires a value")
-        session_file = Path(argv[idx + 1])
-        del argv[idx:idx + 2]
-    help_mode = "-h" in argv or "--help" in argv
-    rest = [a for a in argv if a not in ("-h", "--help")]
+        session_file = Path(head[idx + 1])
+        del head[idx:idx + 2]
+    help_mode = any(a in ("-h", "--help") for a in head)
+    head = [a for a in head if a not in ("-h", "--help")]
     path_parts = []
-    for tok in rest:
+    for tok in head:
         if tok.startswith("--"):
             break
         path_parts.append(tok)
-    return session_file, help_mode, path_parts, rest[len(path_parts):]
+    rest = head[len(path_parts):] + tail
+    return session_file, help_mode, path_parts, rest
 
 
-def run_command(session, parts, params):
-    """Fetch docs, convert params, POST and stream NDJSON, exit with command's code."""
+def run_command(session, parts, param_tokens):
+    """Fetch docs, parse and convert params, POST, stream NDJSON, exit with code."""
     docs = fetch_docs(session, parts)
     spec = docs.get("params", {})
-    unknown = set(params) - set(spec)
-    if unknown:
-        raise ClientError(f"unknown parameter(s): {', '.join(sorted(unknown))}")
+    params = parse_params(param_tokens, spec)
     for pname, pdef in spec.items():
         if pdef.get("required") and pname not in params:
             raise ClientError(f"missing required parameter: --{pname}")
@@ -157,13 +203,17 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     try:
         session_file, help_mode, parts, param_tokens = parse_args(argv)
+        if help_mode and not parts:
+            # Root help must work without the session file or a running server.
+            print_usage()
+            return 0
         session = load_session(session_file)
         if help_mode:
             print_help(fetch_docs(session, parts), parts)
             return 0
         if not parts:
             raise ClientError("no command given; try: portcullis -h")
-        run_command(session, parts, parse_params(param_tokens))
+        run_command(session, parts, param_tokens)
     except ClientError as exc:
         print(f"portcullis: {exc}", file=sys.stderr)
         return 2
