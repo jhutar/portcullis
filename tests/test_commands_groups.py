@@ -15,26 +15,37 @@ class TestPodmanGroup:
 
     def test_run_argv_full(self):
         """Volumes and env come before the image; command words after it."""
-        argv = podman.run_argv({
-            "image": "fedora:41",
-            "volume": ["./src:/src:z,ro"],
-            "env": ["FOO=bar"],
-            "command": ["ls", "-la", "/src"],
-        })
+        argv = podman.run_argv(
+            {
+                "image": "fedora:41",
+                "volume": ["./src:/src:z,ro"],
+                "env": ["FOO=bar"],
+                "command": ["ls", "-la", "/src"],
+            }
+        )
         assert argv == [
-            "podman", "run", "--rm", "-it",
-            "-v", "./src:/src:z,ro",
-            "-e", "FOO=bar",
+            "podman",
+            "run",
+            "--rm",
+            "-it",
+            "-v",
+            "./src:/src:z,ro",
+            "-e",
+            "FOO=bar",
             "fedora:41",
-            "ls", "-la", "/src",
+            "ls",
+            "-la",
+            "/src",
         ]
 
     def test_command_words_can_look_like_podman_flags(self):
         """Words after the image can never be parsed as podman flags."""
-        argv = podman.run_argv({
-            "image": "fedora:41",
-            "command": ["--privileged", "--net=host"],
-        })
+        argv = podman.run_argv(
+            {
+                "image": "fedora:41",
+                "command": ["--privileged", "--net=host"],
+            }
+        )
         assert argv[-2:] == ["--privileged", "--net=host"]
         assert argv.index("fedora:41") < len(argv) - 2
 
@@ -60,6 +71,7 @@ class TestTestingGroup:
 
     def test_readfile_argv(self):
         from pathlib import Path
+
         argv = testing.readfile_argv({"file": Path("/proj/f.txt")})
         assert argv == ["cat", "/proj/f.txt"]
 

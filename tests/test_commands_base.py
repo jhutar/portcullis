@@ -60,8 +60,7 @@ class TestCommandValidate:
             make_command().validate(["name"])
 
     def test_value_error_wrapped(self):
-        with pytest.raises(ParamError,
-                           match="invalid value for parameter 'count'"):
+        with pytest.raises(ParamError, match="invalid value for parameter 'count'"):
             make_command().validate({"name": "x", "count": "three"})
 
 

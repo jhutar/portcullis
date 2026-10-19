@@ -66,16 +66,22 @@ def fetch_docs(session, parts):
     url = api_base(session) + ("/" + "/".join(parts) if parts else "/")
     resp = requests.get(url, headers=api_headers(session), timeout=10)
     if resp.status_code != 200:
-        raise ClientError(f"server returned {resp.status_code} for {url}: {resp.text.strip()}")
+        raise ClientError(
+            f"server returned {resp.status_code} for {url}: {resp.text.strip()}"
+        )
     return resp.json()
 
 
 def print_usage():
     """Print local usage help (no server connection needed)."""
-    print("Usage: portcullis [--session-file PATH] [-h] [<group> [<command>]] [--<param> <value> ...]")
+    print(
+        "Usage: portcullis [--session-file PATH] [-h] [<group> [<command>]] [--<param> <value> ...]"
+    )
     print()
     print("Options:")
-    print("  --session-file PATH  session file (default: $HOME/.portcullis-client.toml)")
+    print(
+        "  --session-file PATH  session file (default: $HOME/.portcullis-client.toml)"
+    )
     print("  -h, --help           show help (root, group or command level)")
     print()
     print("Run 'portcullis <group> -h' or 'portcullis <group> <command> -h'")
@@ -119,12 +125,16 @@ def parse_params(tokens, spec):
         tok = tokens[i]
         if tok == "--":
             if "command" not in spec:
-                raise ClientError("trailing arguments after -- given, but this"
-                                  " command has no 'command' parameter")
-            params["command"] = tokens[i + 1:]
+                raise ClientError(
+                    "trailing arguments after -- given, but this"
+                    " command has no 'command' parameter"
+                )
+            params["command"] = tokens[i + 1 :]
             break
         if not tok.startswith("--"):
-            raise ClientError(f"unexpected argument: {tok!r} (params must be --name value)")
+            raise ClientError(
+                f"unexpected argument: {tok!r} (params must be --name value)"
+            )
         if i + 1 >= len(tokens):
             raise ClientError(f"missing value for {tok!r}")
         name = tok[2:]
@@ -159,7 +169,7 @@ def parse_args(argv):
         if idx + 1 >= len(head):
             raise ClientError("--session-file requires a value")
         session_file = Path(head[idx + 1])
-        del head[idx:idx + 2]
+        del head[idx : idx + 2]
     help_mode = any(a in ("-h", "--help") for a in head)
     head = [a for a in head if a not in ("-h", "--help")]
     path_parts = []
@@ -167,7 +177,7 @@ def parse_args(argv):
         if tok.startswith("--"):
             break
         path_parts.append(tok)
-    rest = head[len(path_parts):] + tail
+    rest = head[len(path_parts) :] + tail
     return session_file, help_mode, path_parts, rest
 
 
@@ -179,12 +189,18 @@ def run_command(session, parts, param_tokens):
     for pname, pdef in spec.items():
         if pdef.get("required") and pname not in params:
             raise ClientError(f"missing required parameter: --{pname}")
-    payload = {name: convert_value(name, spec[name], value) for name, value in params.items()}
+    payload = {
+        name: convert_value(name, spec[name], value) for name, value in params.items()
+    }
 
     url = api_base(session) + "/" + "/".join(parts)
-    with requests.post(url, json=payload, headers=api_headers(session), stream=True) as resp:
+    with requests.post(
+        url, json=payload, headers=api_headers(session), stream=True
+    ) as resp:
         if resp.status_code != 200:
-            raise ClientError(f"server returned {resp.status_code}: {resp.text.strip()}")
+            raise ClientError(
+                f"server returned {resp.status_code}: {resp.text.strip()}"
+            )
         for line in resp.iter_lines():
             if not line:
                 continue
@@ -225,8 +241,10 @@ def main(argv=None):
         print(f"portcullis: {exc}", file=sys.stderr)
         return 2
     except requests.ConnectionError:
-        print("portcullis: cannot reach the server (is portcullis-server running?)",
-              file=sys.stderr)
+        print(
+            "portcullis: cannot reach the server (is portcullis-server running?)",
+            file=sys.stderr,
+        )
         return 2
     return 0
 

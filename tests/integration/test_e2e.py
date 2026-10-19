@@ -75,13 +75,13 @@ def test_exit_code_propagates_to_client(session_file):
     assert run_client(session_file, "testing", "fail", "--code", "7") == 7
 
 
-def test_readfile_with_client_root_translation(server, session_file,
-                                               project_dir, tmp_path, capsys):
+def test_readfile_with_client_root_translation(
+    server, session_file, project_dir, tmp_path, capsys
+):
     """Client-side absolute path is translated to the server project dir."""
     (project_dir / "hello.txt").write_text("translated content\n")
     client_path = tmp_path / "clienthome" / project_dir.name / "hello.txt"
-    code = run_client(session_file, "testing", "readfile",
-                      "--file", str(client_path))
+    code = run_client(session_file, "testing", "readfile", "--file", str(client_path))
     assert code == 0
     assert capsys.readouterr().out == "translated content\n"
 

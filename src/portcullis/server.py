@@ -31,6 +31,7 @@ def ndjson_error(status, code, message, **extra):
 
 def stream_command(argv):
     """Run argv in the server cwd, streaming merged output as NDJSON."""
+
     def generate():
         proc = subprocess.Popen(
             argv,
@@ -43,6 +44,7 @@ def stream_command(argv):
             yield ndjson_line({"type": "output", "data": line})
         proc.wait()
         yield ndjson_line({"type": "done", "exit_code": proc.returncode})
+
     return Response(stream_with_context(generate()), mimetype=NDJSON_MIME)
 
 
@@ -56,8 +58,11 @@ def create_app(cfg, token, client_root):
     groups = {}
     for name, factory in REGISTRY.items():
         if name not in endpoints_cfg:
-            print(f"portcullis: warning: endpoint group {name!r} is not mentioned"
-                  f" in the config and is therefore disabled", file=sys.stderr)
+            print(
+                f"portcullis: warning: endpoint group {name!r} is not mentioned"
+                f" in the config and is therefore disabled",
+                file=sys.stderr,
+            )
         if endpoints_cfg.get(name) is not True:
             continue
         groups[name] = factory(client_root)
@@ -75,17 +80,21 @@ def create_app(cfg, token, client_root):
     @app.get("/")
     def list_groups():
         """List enabled endpoint groups."""
-        return jsonify(groups=[
-            {"path": f"/{g.name}", "description": g.description}
-            for g in groups.values()
-        ])
+        return jsonify(
+            groups=[
+                {"path": f"/{g.name}", "description": g.description}
+                for g in groups.values()
+            ]
+        )
 
     @app.get("/<group_name>")
     def group_docs(group_name):
         """List child endpoints of an enabled group."""
         group = groups.get(group_name)
         if group is None:
-            return ndjson_error(404, "not_found", f"unknown or disabled endpoint: /{group_name}")
+            return ndjson_error(
+                404, "not_found", f"unknown or disabled endpoint: /{group_name}"
+            )
         return jsonify(group.describe())
 
     @app.get("/<group_name>/<command_name>")
@@ -94,8 +103,11 @@ def create_app(cfg, token, client_root):
         group = groups.get(group_name)
         command = group.commands.get(command_name) if group else None
         if command is None:
-            return ndjson_error(404, "not_found",
-                                f"unknown or disabled endpoint: /{group_name}/{command_name}")
+            return ndjson_error(
+                404,
+                "not_found",
+                f"unknown or disabled endpoint: /{group_name}/{command_name}",
+            )
         doc = command.describe()
         doc["path"] = f"/{group_name}/{command_name}"
         return jsonify(doc)
@@ -106,8 +118,11 @@ def create_app(cfg, token, client_root):
         group = groups.get(group_name)
         command = group.commands.get(command_name) if group else None
         if command is None:
-            return ndjson_error(404, "not_found",
-                                f"unknown or disabled endpoint: /{group_name}/{command_name}")
+            return ndjson_error(
+                404,
+                "not_found",
+                f"unknown or disabled endpoint: /{group_name}/{command_name}",
+            )
         payload = request.get_json(silent=True)
         try:
             cleaned = command.validate(payload)
@@ -115,8 +130,9 @@ def create_app(cfg, token, client_root):
             return ndjson_error(400, "invalid_param", str(exc))
         argv = command.build_argv(cleaned)
         if shutil.which(argv[0]) is None:
-            return ndjson_error(400, "binary_not_found",
-                                f"{argv[0]!r} binary not found on server PATH")
+            return ndjson_error(
+                400, "binary_not_found", f"{argv[0]!r} binary not found on server PATH"
+            )
         return stream_command(argv)
 
     return app
@@ -133,17 +149,27 @@ def main(argv=None):
     """Entry point for the portcullis-server command."""
     parser = argparse.ArgumentParser(
         prog="portcullis-server",
-        description="Serve whitelisted CLI commands over authenticated HTTP.")
-    parser.add_argument("--config", type=Path, default=None,
-                        help="path to the main config TOML"
-                             f" (default: {config_mod.DEFAULT_USER_CONFIG})")
-    parser.add_argument("--host", default="127.0.0.1",
-                        help="interface to bind to (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8931,
-                        help="port to listen on (default: 8931)")
-    parser.add_argument("--session-file", type=Path,
-                        default=Path.cwd() / ".portcullis-client.toml",
-                        help="where to write the client session file (token + port)")
+        description="Serve whitelisted CLI commands over authenticated HTTP.",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="path to the main config TOML"
+        f" (default: {config_mod.DEFAULT_USER_CONFIG})",
+    )
+    parser.add_argument(
+        "--host", default="127.0.0.1", help="interface to bind to (default: 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8931, help="port to listen on (default: 8931)"
+    )
+    parser.add_argument(
+        "--session-file",
+        type=Path,
+        default=Path.cwd() / ".portcullis-client.toml",
+        help="where to write the client session file (token + port)",
+    )
     args = parser.parse_args(argv)
 
     cfg = config_mod.load_config(user_path=args.config)

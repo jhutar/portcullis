@@ -19,11 +19,13 @@ from portcullis.params import (
 class TestParamBase:
     def test_validate_not_implemented(self):
         from portcullis.params import ParamType
+
         with pytest.raises(NotImplementedError):
             ParamType().validate("x")
 
     def test_describe_default(self):
         from portcullis.params import ParamType
+
         assert ParamType().describe() == {"type": "string"}
 
 
@@ -116,6 +118,7 @@ class TestLocalPaths:
     def test_client_root_translation(self, project_dir, client_root):
         """Absolute client-side path under client_root maps into cwd."""
         from pathlib import Path
+
         self.make_file(project_dir)
         value = str(Path(client_root) / "f.txt")
         resolved = GenericLocalReadableFileType(client_root).validate(value)
@@ -131,38 +134,47 @@ class TestGenericEnvVarType:
     def test_accepts_key_value(self, value):
         assert GenericEnvVarType().validate(value) == value
 
-    @pytest.mark.parametrize("value", [
-        "FOO",            # no =
-        "=bar",           # empty key
-        "1FOO=bar",       # key starts with digit
-        "FOO=",           # empty value
-        "FOO bar=baz",    # space in key
-        5,                # not a str
-    ])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "FOO",  # no =
+            "=bar",  # empty key
+            "1FOO=bar",  # key starts with digit
+            "FOO=",  # empty value
+            "FOO bar=baz",  # space in key
+            5,  # not a str
+        ],
+    )
     def test_rejects_bad(self, value):
         with pytest.raises(ParamError):
             GenericEnvVarType().validate(value)
 
 
 class TestPodmanImageNameType:
-    @pytest.mark.parametrize("value", [
-        "quay.io/org/image:41",
-        "fedora:latest",
-        "image@sha256:abc123",
-        "org/img",
-    ])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "quay.io/org/image:41",
+            "fedora:latest",
+            "image@sha256:abc123",
+            "org/img",
+        ],
+    )
     def test_accepts_valid(self, value):
         assert PodmanImageNameType().validate(value) == value
 
-    @pytest.mark.parametrize("value", [
-        "-flag",          # could be mistaken for a podman flag
-        "--privileged",
-        "foo bar",        # space
-        "",               # empty
-        "foo;rm",         # semicolon
-        "foo|bar",
-        5,                # not a str
-    ])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "-flag",  # could be mistaken for a podman flag
+            "--privileged",
+            "foo bar",  # space
+            "",  # empty
+            "foo;rm",  # semicolon
+            "foo|bar",
+            5,  # not a str
+        ],
+    )
     def test_rejects_invalid(self, value):
         with pytest.raises(ParamError):
             PodmanImageNameType().validate(value)
@@ -182,13 +194,16 @@ class TestPodmanVolumeSpecType:
         self.make_file(project_dir)
         assert PodmanVolumeSpecType().validate("src:dst:z,ro") == "src:dst:z,ro"
 
-    @pytest.mark.parametrize("value", [
-        "justone",           # 1 part
-        "a:b:c:d",           # 4 parts
-        "missing:dst",       # nonexistent src
-        "myvol:/dst",        # named volume: src not a local path
-        5,                   # not a str
-    ])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "justone",  # 1 part
+            "a:b:c:d",  # 4 parts
+            "missing:dst",  # nonexistent src
+            "myvol:/dst",  # named volume: src not a local path
+            5,  # not a str
+        ],
+    )
     def test_rejects_bad(self, value, project_dir):
         with pytest.raises(ParamError):
             PodmanVolumeSpecType().validate(value)

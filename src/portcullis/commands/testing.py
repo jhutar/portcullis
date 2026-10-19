@@ -6,12 +6,12 @@ and give tests and smoke checks a stable target that does not depend on
 podman being installed.
 """
 
-from .base import Command, Group, Param
 from ..params import (
     GenericIntegerType,
     GenericLocalReadableFileType,
     GenericStringType,
 )
+from .base import Command, Group, Param
 
 
 def echo_argv(args):
@@ -71,5 +71,8 @@ def make_group(client_root):
         },
         build_argv=readfile_argv,
     )
-    return Group("testing", "Safe commands for tests and smoke checks",
-                 {"echo": echo, "fail": fail, "readfile": readfile})
+    return Group(
+        "testing",
+        "Safe commands for tests and smoke checks",
+        {"echo": echo, "fail": fail, "readfile": readfile},
+    )

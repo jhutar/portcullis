@@ -27,12 +27,15 @@ class TestAuth:
         resp = c.get("/", headers={"Authorization": "Bearer wrong"})
         assert resp.status_code == 401
 
-    @pytest.mark.parametrize("method,path", [
-        ("GET", "/"),
-        ("GET", "/podman"),
-        ("GET", "/podman/build"),
-        ("POST", "/testing/echo"),
-    ])
+    @pytest.mark.parametrize(
+        "method,path",
+        [
+            ("GET", "/"),
+            ("GET", "/podman"),
+            ("GET", "/podman/build"),
+            ("POST", "/testing/echo"),
+        ],
+    )
     def test_auth_covers_all_routes(self, app, method, path):
         c = app.test_client()
         kwargs = {"json": {}} if method == "POST" else {}
@@ -41,7 +44,9 @@ class TestAuth:
 
 
 class TestDenyByDefault:
-    def test_unmentioned_group_disabled_with_warning(self, project_dir, client_root, capsys):
+    def test_unmentioned_group_disabled_with_warning(
+        self, project_dir, client_root, capsys
+    ):
         cfg = {"endpoints": {"podman": True}}
         app = create_app(cfg, TOKEN, client_root)
         assert "testing" in capsys.readouterr().err
@@ -49,7 +54,9 @@ class TestDenyByDefault:
         c.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {TOKEN}"
         assert c.get("/testing").status_code == 404
 
-    def test_false_group_disabled_without_warning(self, project_dir, client_root, capsys):
+    def test_false_group_disabled_without_warning(
+        self, project_dir, client_root, capsys
+    ):
         cfg = {"endpoints": {"podman": True, "testing": False}}
         app = create_app(cfg, TOKEN, client_root)
         assert "warning" not in capsys.readouterr().err
@@ -136,8 +143,7 @@ class TestRunCommand:
         assert resp.status_code == 400
 
     def test_non_json_body_400(self, tclient):
-        resp = tclient.post("/testing/echo", data="not json",
-                            content_type="text/plain")
+        resp = tclient.post("/testing/echo", data="not json", content_type="text/plain")
         assert resp.status_code == 400
         assert json.loads(resp.data)["code"] == "invalid_param"
 
@@ -166,16 +172,20 @@ class TestSessionFile:
 
 class TestServerMain:
     def test_main_writes_session_file_and_configures_app(
-            self, project_dir, tmp_path, monkeypatch, capsys):
+        self, project_dir, tmp_path, monkeypatch, capsys
+    ):
         """main() loads config, writes the session file and starts the app."""
         import flask
+
         from portcullis import server
+
         monkeypatch.setattr(flask.Flask, "run", lambda self, **kw: None)
         cfg = tmp_path / "cfg.toml"
-        cfg.write_text('[endpoints]\ntesting = true\n')
+        cfg.write_text("[endpoints]\ntesting = true\n")
         session = tmp_path / "session.toml"
-        server.main(["--config", str(cfg), "--port", "8931",
-                     "--session-file", str(session)])
+        server.main(
+            ["--config", str(cfg), "--port", "8931", "--session-file", str(session)]
+        )
         out = capsys.readouterr().out
         assert "listening on http://127.0.0.1:8931" in out
         assert "enabled groups: testing" in out
@@ -184,6 +194,7 @@ class TestServerMain:
 
     def test_main_help_exits_zero(self, capsys):
         from portcullis import server
+
         with pytest.raises(SystemExit) as exc:
             server.main(["--help"])
         assert exc.value.code == 0

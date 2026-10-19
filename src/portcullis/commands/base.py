@@ -59,7 +59,9 @@ class Command:
             try:
                 cleaned[name] = spec.ptype.validate(payload[name])
             except ParamError as exc:
-                raise ParamError(f"invalid value for parameter {name!r}: {exc}") from exc
+                raise ParamError(
+                    f"invalid value for parameter {name!r}: {exc}"
+                ) from exc
         return cleaned
 
 

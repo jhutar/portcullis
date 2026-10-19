@@ -1,6 +1,5 @@
 """The podman command group."""
 
-from .base import Command, Group, Param
 from ..params import (
     GenericEnvVarType,
     GenericListType,
@@ -9,6 +8,7 @@ from ..params import (
     PodmanImageNameType,
     PodmanVolumeSpecType,
 )
+from .base import Command, Group, Param
 
 
 def build_argv(args):
@@ -68,8 +68,7 @@ def make_group(client_root):
             ),
             "env": Param(
                 GenericListType(GenericEnvVarType()),
-                "Environment variables as KEY=VALUE; repeat the flag per"
-                " variable",
+                "Environment variables as KEY=VALUE; repeat the flag per variable",
                 required=False,
             ),
             "command": Param(
@@ -81,4 +80,6 @@ def make_group(client_root):
         },
         build_argv=run_argv,
     )
-    return Group("podman", "Container image management via podman", {"build": build, "run": run})
+    return Group(
+        "podman", "Container image management via podman", {"build": build, "run": run}
+    )
