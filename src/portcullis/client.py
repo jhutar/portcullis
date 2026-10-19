@@ -195,7 +195,11 @@ def run_command(session, parts, param_tokens):
 
     url = api_base(session) + "/" + "/".join(parts)
     with requests.post(
-        url, json=payload, headers=api_headers(session), stream=True
+        url,
+        json=payload,
+        headers=api_headers(session),
+        stream=True,
+        timeout=(10, None),  # connect timeout only; stream may idle while command runs
     ) as resp:
         if resp.status_code != 200:
             raise ClientError(
